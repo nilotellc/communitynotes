@@ -59,6 +59,33 @@ def create_note(
 # =============================================================================
 
 
+@router.get("/by-author/{author_id}", response_model=List[NoteResponse])
+def get_notes_by_author(
+    author_id: int,
+    status: Optional[NoteStatus] = None,
+    limit: int = Query(default=50, le=100),
+    offset: int = 0,
+    db: Session = Depends(get_db)
+) -> List[NoteResponse]:
+    """
+    Get all notes created by a specific author.
+    
+    Returns notes with their current status and scoring information.
+    Optionally filter by status.
+    """
+    query = db.query(Note).filter(Note.author_id == author_id)
+    
+    if status:
+        query = query.filter(Note.status == status.value)
+    
+    # Order by creation date (newest first)
+    query = query.order_by(Note.created_at.desc())
+    
+    notes = query.offset(offset).limit(limit).all()
+    
+    return [_note_to_response(n) for n in notes]
+
+
 @router.get("/{note_id}", response_model=NoteResponse)
 def get_note(
     note_id: int,
